@@ -22,6 +22,7 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Toaster, toast } from 'sonner';
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
 import {
   Send,
   FileText,
@@ -316,6 +317,8 @@ export default function LocoChat() {
               <p className="text-xs text-muted-foreground">Ask anything about your documents</p>
             </div>
           </div>
+
+          <AnimatedThemeToggler className="mr-2" />
         </header>
 
         {/* Messages */}

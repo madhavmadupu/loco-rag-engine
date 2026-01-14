@@ -20,6 +20,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Toaster, toast } from 'sonner';
+import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
 import {
     Settings,
     Upload,
@@ -334,6 +335,7 @@ export default function AdminPage() {
                     </div>
                 </div>
                 <div className="flex items-center gap-2">
+                    <AnimatedThemeToggler className="mr-2" />
                     <Button variant="outline" size="sm" asChild>
                         <a href="/" className="flex items-center gap-2">
                             <ArrowLeft className="w-4 h-4" />
