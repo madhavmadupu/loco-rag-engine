@@ -1,13 +1,11 @@
 /**
- * @fileoverview Professional Chat UI for LOCO RAG Engine.
+ * @fileoverview Clean, minimal Chat UI for LOCO RAG Engine.
  * 
- * A full-featured, ChatGPT-style chat interface with:
- * - Clean message bubbles with avatars
- * - Markdown rendering support
- * - Typing indicators
- * - Message actions (copy)
- * - Source citations
- * - Responsive sidebar
+ * Inspired by llmchat.co - featuring:
+ * - Clean sidebar with search
+ * - Minimal header
+ * - Clean message rendering
+ * - Bottom input with clean styling
  */
 
 'use client';
@@ -15,11 +13,9 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { locoApi, QueryResponse, Reference } from '@/lib/api';
 import { Button } from '@/components/ui/button';
-import { Textarea } from '@/components/ui/textarea';
-import { Card, CardContent } from '@/components/ui/card';
+import { Input } from '@/components/ui/input';
 import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
-import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
 import { Toaster, toast } from 'sonner';
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
@@ -27,18 +23,15 @@ import {
   Send,
   FileText,
   Settings,
-  Sparkles,
-  User,
-  Bot,
-  Loader2,
-  Copy,
-  Check,
   Plus,
   MessageSquare,
   Trash2,
-  Menu,
-  X,
-  ChevronRight
+  Search,
+  Sparkles,
+  Loader2,
+  Copy,
+  Check,
+  BookOpen
 } from 'lucide-react';
 
 /** Chat message with role and content. */
@@ -78,28 +71,26 @@ async function copyToClipboard(text: string): Promise<boolean> {
 }
 
 /**
- * Format timestamp for display.
- */
-function formatTime(date: Date): string {
-  return date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
-}
-
-/**
  * Main chat page component.
  */
 export default function LocoChat() {
   const [sessions, setSessions] = useState<ChatSession[]>([]);
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
+  const [searchQuery, setSearchQuery] = useState('');
   const [isLoading, setIsLoading] = useState(false);
   const [copiedId, setCopiedId] = useState<string | null>(null);
-  const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
-  const textareaRef = useRef<HTMLTextAreaElement>(null);
+  const inputRef = useRef<HTMLInputElement>(null);
 
   // Get active session
   const activeSession = sessions.find(s => s.id === activeSessionId);
   const messages = activeSession?.messages || [];
+
+  // Filter sessions by search
+  const filteredSessions = sessions.filter(s =>
+    s.title.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
   // Auto-scroll to bottom when new messages arrive
   useEffect(() => {
@@ -107,14 +98,6 @@ export default function LocoChat() {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
   }, [messages]);
-
-  // Auto-resize textarea
-  useEffect(() => {
-    if (textareaRef.current) {
-      textareaRef.current.style.height = 'auto';
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 200)}px`;
-    }
-  }, [input]);
 
   /**
    * Create a new chat session.
@@ -129,6 +112,7 @@ export default function LocoChat() {
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
     toast.info('New chat started');
+    inputRef.current?.focus();
   }, []);
 
   /**
@@ -163,16 +147,24 @@ export default function LocoChat() {
     if (!input.trim() || isLoading) return;
 
     // Create session if none exists
-    if (!activeSessionId) {
-      createNewSession();
+    let currentSessionId = activeSessionId;
+    if (!currentSessionId) {
+      const newSession: ChatSession = {
+        id: generateId(),
+        title: 'New Chat',
+        messages: [],
+        createdAt: new Date(),
+      };
+      setSessions(prev => [newSession, ...prev]);
+      setActiveSessionId(newSession.id);
+      currentSessionId = newSession.id;
     }
 
     const userMessage = input.trim();
     setInput('');
     setIsLoading(true);
 
-    // Show processing toast
-    const toastId = toast.loading('Processing your question...');
+    const toastId = toast.loading('Thinking...');
 
     const newUserMessage: Message = {
       id: generateId(),
@@ -183,10 +175,9 @@ export default function LocoChat() {
 
     // Add user message
     setSessions(prev => prev.map(session => {
-      if (session.id === activeSessionId) {
-        // Update title if first message
+      if (session.id === currentSessionId) {
         const title = session.messages.length === 0
-          ? userMessage.slice(0, 40) + (userMessage.length > 40 ? '...' : '')
+          ? userMessage.slice(0, 50) + (userMessage.length > 50 ? '...' : '')
           : session.title;
         return {
           ...session,
@@ -208,9 +199,8 @@ export default function LocoChat() {
         timestamp: new Date(),
       };
 
-      // Add assistant response
       setSessions(prev => prev.map(session => {
-        if (session.id === activeSessionId) {
+        if (session.id === currentSessionId) {
           return {
             ...session,
             messages: [...session.messages, newAssistantMessage],
@@ -219,7 +209,7 @@ export default function LocoChat() {
         return session;
       }));
 
-      toast.success('Response received', { id: toastId });
+      toast.success('Done', { id: toastId });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
       toast.error(errorMessage, { id: toastId });
@@ -240,35 +230,69 @@ export default function LocoChat() {
 
   return (
     <div className="flex h-screen bg-background">
-      <Toaster richColors position="top-right" />
+      <Toaster richColors position="top-center" />
+
       {/* Sidebar */}
-      <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} border-r bg-muted/30 flex flex-col transition-all duration-300 overflow-hidden`}>
-        {/* Sidebar Header */}
-        <div className="p-4 border-b">
+      <aside className="w-64 border-r flex flex-col bg-muted/20">
+        {/* Logo */}
+        <div className="p-4 flex items-center justify-between">
+          <div className="flex items-center gap-2">
+            <div className="w-7 h-7 rounded-md bg-primary flex items-center justify-center">
+              <Sparkles className="w-4 h-4 text-primary-foreground" />
+            </div>
+            <span className="font-semibold text-sm">loco.local</span>
+          </div>
           <Button
+            variant="ghost"
+            size="icon"
+            className="h-7 w-7"
             onClick={createNewSession}
-            className="w-full justify-start gap-2"
-            variant="outline"
           >
             <Plus className="w-4 h-4" />
-            New Chat
           </Button>
         </div>
 
+        {/* New Chat Button */}
+        <div className="px-3 pb-2">
+          <Button
+            onClick={createNewSession}
+            variant="outline"
+            className="w-full justify-start gap-2 h-9"
+          >
+            <Plus className="w-4 h-4" />
+            New
+          </Button>
+        </div>
+
+        {/* Search */}
+        <div className="px-3 pb-3">
+          <div className="relative">
+            <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input
+              placeholder="Search"
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-8 h-9 text-sm"
+            />
+          </div>
+        </div>
+
+        <Separator />
+
         {/* Chat History */}
-        <ScrollArea className="flex-1 p-2">
-          <div className="space-y-1">
-            {sessions.map(session => (
+        <ScrollArea className="flex-1 px-2 py-2">
+          <div className="space-y-0.5">
+            {filteredSessions.map(session => (
               <div
                 key={session.id}
-                className={`group flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors ${session.id === activeSessionId
-                  ? 'bg-primary/10 text-primary'
-                  : 'hover:bg-muted'
+                className={`group flex items-center gap-2 px-2 py-2 rounded-md cursor-pointer text-sm transition-colors ${session.id === activeSessionId
+                    ? 'bg-accent text-accent-foreground'
+                    : 'hover:bg-muted text-muted-foreground hover:text-foreground'
                   }`}
                 onClick={() => setActiveSessionId(session.id)}
               >
-                <MessageSquare className="w-4 h-4 shrink-0" />
-                <span className="flex-1 truncate text-sm">{session.title}</span>
+                <MessageSquare className="w-4 h-4 shrink-0 opacity-60" />
+                <span className="flex-1 truncate">{session.title}</span>
                 <Button
                   variant="ghost"
                   size="icon"
@@ -286,11 +310,11 @@ export default function LocoChat() {
         </ScrollArea>
 
         {/* Sidebar Footer */}
-        <div className="p-4 border-t">
-          <Button variant="ghost" asChild className="w-full justify-start gap-2">
+        <div className="p-3 border-t space-y-1">
+          <Button variant="ghost" asChild className="w-full justify-start gap-2 h-9 text-sm">
             <a href="/admin">
               <Settings className="w-4 h-4" />
-              Admin Panel
+              Admin
             </a>
           </Button>
         </div>
@@ -299,203 +323,120 @@ export default function LocoChat() {
       {/* Main Content */}
       <main className="flex-1 flex flex-col min-w-0">
         {/* Header */}
-        <header className="flex items-center gap-4 px-4 py-3 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
-          <Button
-            variant="ghost"
-            size="icon"
-            onClick={() => setSidebarOpen(!sidebarOpen)}
-          >
-            {sidebarOpen ? <X className="w-5 h-5" /> : <Menu className="w-5 h-5" />}
-          </Button>
-
-          <div className="flex items-center gap-3 flex-1">
-            <div className="flex items-center justify-center w-9 h-9 rounded-lg bg-linear-to-br from-blue-500 to-purple-600">
-              <Sparkles className="w-5 h-5 text-white" />
-            </div>
-            <div>
-              <h1 className="text-lg font-semibold">LOCO RAG Engine</h1>
-              <p className="text-xs text-muted-foreground">Ask anything about your documents</p>
-            </div>
-          </div>
-
-          <AnimatedThemeToggler className="mr-2" />
+        <header className="h-14 flex items-center justify-between px-4 border-b">
+          <div />
+          <AnimatedThemeToggler />
         </header>
 
         {/* Messages */}
         <ScrollArea className="flex-1" ref={scrollRef}>
-          <div className="max-w-3xl mx-auto p-6 space-y-6">
+          <div className="max-w-3xl mx-auto py-8 px-6">
             {/* Empty State */}
-            {messages.length === 0 && !activeSession && (
-              <div className="flex flex-col items-center justify-center py-20 text-center">
-                <div className="w-20 h-20 rounded-2xl bg-linear-to-br from-blue-500/20 to-purple-600/20 flex items-center justify-center mb-6">
-                  <Sparkles className="w-10 h-10 text-primary" />
+            {messages.length === 0 && (
+              <div className="flex flex-col items-center justify-center py-16 text-center">
+                <div className="w-12 h-12 rounded-xl bg-primary/10 flex items-center justify-center mb-4">
+                  <BookOpen className="w-6 h-6 text-primary" />
                 </div>
-                <h2 className="text-2xl font-semibold mb-3">
-                  Welcome to LOCO
+                <h2 className="text-lg font-medium mb-2">
+                  Ask anything about your documents
                 </h2>
-                <p className="text-muted-foreground max-w-md mb-8">
-                  Your local-first RAG engine for intelligent document Q&A.
-                  Upload documents in the Admin Panel, then start asking questions.
+                <p className="text-sm text-muted-foreground max-w-sm">
+                  Upload documents in Admin, then ask questions here.
+                  Your data stays local and private.
                 </p>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3 w-full max-w-lg">
-                  {[
-                    'What are the key points in my documents?',
-                    'Summarize the main topics covered',
-                    'Find information about...',
-                    'Explain the relationship between...'
-                  ].map((suggestion, i) => (
-                    <Button
-                      key={i}
-                      variant="outline"
-                      className="justify-start h-auto p-4 text-left"
-                      onClick={() => {
-                        createNewSession();
-                        setInput(suggestion);
-                      }}
-                    >
-                      <ChevronRight className="w-4 h-4 mr-2 text-muted-foreground" />
-                      <span className="text-sm">{suggestion}</span>
-                    </Button>
-                  ))}
-                </div>
               </div>
             )}
 
             {/* Messages */}
-            {messages.map((message) => (
-              <div key={message.id} className="group">
-                <div className={`flex gap-4 ${message.role === 'user' ? 'flex-row-reverse' : ''}`}>
-                  {/* Avatar */}
-                  <Avatar className="w-8 h-8 shrink-0">
-                    <AvatarFallback className={message.role === 'assistant'
-                      ? 'bg-linear-to-br from-blue-500 to-purple-600 text-white'
-                      : 'bg-secondary'
-                    }>
-                      {message.role === 'assistant' ? (
-                        <Bot className="w-4 h-4" />
-                      ) : (
-                        <User className="w-4 h-4" />
-                      )}
-                    </AvatarFallback>
-                  </Avatar>
-
-                  {/* Message Content */}
-                  <div className={`flex-1 space-y-2 ${message.role === 'user' ? 'items-end' : ''}`}>
-                    <div className="flex items-center gap-2">
-                      <span className="text-sm font-medium">
-                        {message.role === 'assistant' ? 'LOCO' : 'You'}
-                      </span>
-                      <span className="text-xs text-muted-foreground">
-                        {formatTime(message.timestamp)}
-                      </span>
+            <div className="space-y-8">
+              {messages.map((message) => (
+                <div key={message.id} className="group">
+                  {/* User Message */}
+                  {message.role === 'user' && (
+                    <div className="flex justify-end mb-4">
+                      <div className="bg-primary text-primary-foreground rounded-2xl rounded-br-md px-4 py-2.5 max-w-[80%]">
+                        <p className="text-sm">{message.content}</p>
+                      </div>
                     </div>
+                  )}
 
-                    <Card className={`inline-block max-w-full ${message.role === 'user'
-                      ? 'bg-primary text-primary-foreground'
-                      : 'bg-muted/50'
-                      }`}>
-                      <CardContent className="p-4">
-                        <div className="prose prose-sm dark:prose-invert max-w-none">
-                          <p className="whitespace-pre-wrap leading-relaxed m-0">
-                            {message.content}
-                          </p>
+                  {/* Assistant Message */}
+                  {message.role === 'assistant' && (
+                    <div className="space-y-3">
+                      <div className="prose prose-sm dark:prose-invert max-w-none">
+                        <p className="text-sm leading-relaxed whitespace-pre-wrap">
+                          {message.content}
+                        </p>
+                      </div>
+
+                      {/* Sources */}
+                      {message.references && message.references.length > 0 && (
+                        <div className="flex items-center gap-2 flex-wrap">
+                          {message.references.map((ref, idx) => (
+                            <Badge
+                              key={idx}
+                              variant="secondary"
+                              className="text-xs font-normal gap-1 cursor-help"
+                              title={ref.snippet}
+                            >
+                              <FileText className="w-3 h-3" />
+                              {ref.source}
+                            </Badge>
+                          ))}
                         </div>
+                      )}
 
-                        {/* Source References */}
-                        {message.references && message.references.length > 0 && (
-                          <div className="mt-4 pt-4 border-t border-border/50">
-                            <p className="text-xs font-medium text-muted-foreground mb-2">
-                              Sources
-                            </p>
-                            <div className="flex flex-wrap gap-2">
-                              {message.references.map((ref, refIndex) => (
-                                <Badge
-                                  key={refIndex}
-                                  variant="secondary"
-                                  className="cursor-help text-xs"
-                                  title={ref.snippet}
-                                >
-                                  <FileText className="w-3 h-3 mr-1" />
-                                  {ref.source}
-                                </Badge>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </CardContent>
-                    </Card>
-
-                    {/* Message Actions */}
-                    {message.role === 'assistant' && (
+                      {/* Actions */}
                       <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="sm"
-                          className="h-8 px-2"
+                          className="h-7 px-2 text-xs"
                           onClick={() => handleCopy(message.id, message.content)}
                         >
                           {copiedId === message.id ? (
-                            <Check className="w-4 h-4 text-green-500" />
+                            <Check className="w-3 h-3 mr-1" />
                           ) : (
-                            <Copy className="w-4 h-4" />
+                            <Copy className="w-3 h-3 mr-1" />
                           )}
-                          <span className="ml-1 text-xs">
-                            {copiedId === message.id ? 'Copied!' : 'Copy'}
-                          </span>
+                          {copiedId === message.id ? 'Copied' : 'Copy'}
                         </Button>
                       </div>
-                    )}
-                  </div>
-                </div>
-              </div>
-            ))}
-
-            {/* Typing Indicator */}
-            {isLoading && (
-              <div className="flex gap-4">
-                <Avatar className="w-8 h-8">
-                  <AvatarFallback className="bg-linear-to-br from-blue-500 to-purple-600 text-white">
-                    <Bot className="w-4 h-4" />
-                  </AvatarFallback>
-                </Avatar>
-                <Card className="bg-muted/50">
-                  <CardContent className="p-4">
-                    <div className="flex items-center gap-2">
-                      <div className="flex gap-1">
-                        <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '0ms' }} />
-                        <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '150ms' }} />
-                        <span className="w-2 h-2 bg-primary/60 rounded-full animate-bounce" style={{ animationDelay: '300ms' }} />
-                      </div>
-                      <span className="text-sm text-muted-foreground">Thinking...</span>
                     </div>
-                  </CardContent>
-                </Card>
-              </div>
-            )}
+                  )}
+                </div>
+              ))}
 
-
+              {/* Loading */}
+              {isLoading && (
+                <div className="flex items-center gap-2 text-muted-foreground">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  <span className="text-sm">Thinking...</span>
+                </div>
+              )}
+            </div>
           </div>
         </ScrollArea>
 
         {/* Input Area */}
-        <footer className="p-4 border-t bg-background">
+        <footer className="p-4 border-t">
           <div className="max-w-3xl mx-auto">
-            <div className="relative flex items-end gap-2 bg-muted/50 rounded-2xl p-2 border">
-              <Textarea
-                ref={textareaRef}
+            <div className="flex items-center gap-2 bg-muted/50 rounded-xl border px-4 py-2">
+              <Input
+                ref={inputRef}
                 value={input}
                 onChange={(e) => setInput(e.target.value)}
                 onKeyDown={handleKeyDown}
-                placeholder="Ask a question about your documents..."
+                placeholder="Ask anything"
                 disabled={isLoading}
-                className="flex-1 min-h-[44px] max-h-[200px] resize-none border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 py-3 px-4"
-                rows={1}
+                className="flex-1 border-0 bg-transparent focus-visible:ring-0 focus-visible:ring-offset-0 h-9 text-sm placeholder:text-muted-foreground/60"
               />
               <Button
                 onClick={handleSend}
                 disabled={isLoading || !input.trim()}
                 size="icon"
-                className="shrink-0 rounded-xl h-10 w-10"
+                variant="ghost"
+                className="h-8 w-8 shrink-0"
               >
                 {isLoading ? (
                   <Loader2 className="w-4 h-4 animate-spin" />
@@ -504,9 +445,6 @@ export default function LocoChat() {
                 )}
               </Button>
             </div>
-            <p className="text-xs text-muted-foreground text-center mt-2">
-              LOCO uses local LLMs to answer questions based on your uploaded documents.
-            </p>
           </div>
         </footer>
       </main>
