@@ -1,193 +1,112 @@
-<p align="center">
-  <h1 align="center">🚀 LOCO RAG Engine</h1>
-  <p align="center">
-    <strong>Local-Only Contextual Orchestration</strong><br/>
-    A production-ready, local-first RAG system for private document Q&A
-  </p>
-</p>
+# 🚀 LOCO RAG Engine
+### **Local-Only Contextual Orchestration**
+*A production-grade, privacy-first Retrieval-Augmented Generation (RAG) system that runs entirely on your hardware.*
 
-<p align="center">
-  <img src="https://img.shields.io/badge/python-3.10+-blue?style=flat-square&logo=python" alt="Python"/>
-  <img src="https://img.shields.io/badge/FastAPI-0.100+-009688?style=flat-square&logo=fastapi" alt="FastAPI"/>
-  <img src="https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js" alt="Next.js"/>
-  <img src="https://img.shields.io/badge/Ollama-local-orange?style=flat-square" alt="Ollama"/>
-  <img src="https://img.shields.io/badge/LanceDB-embedded-purple?style=flat-square" alt="LanceDB"/>
-</p>
+[![Python](https://img.shields.io/badge/Python-3.10+-blue?style=for-the-badge&logo=python&logoColor=white)](https://python.org)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=for-the-badge&logo=next.js&logoColor=white)](https://nextjs.org)
+[![FastAPI](https://img.shields.io/badge/FastAPI-Latest-009688?style=for-the-badge&logo=fastapi&logoColor=white)](https://fastapi.tiangolo.com)
+[![Ollama](https://img.shields.io/badge/Ollama-Local_LLM-orange?style=for-the-badge)](https://ollama.com)
 
 ---
 
-## 🎯 Overview
+## 🎯 The Vision
+**LOCO** (Local-Only Contextual Orchestration) is designed for organizations and individuals who need the power of RAG without the privacy risks or costs of cloud-based LLMs. 
 
-LOCO RAG Engine is a **fully local**, privacy-first Retrieval-Augmented Generation (RAG) system. Upload your documents, ask questions, and get accurate answers with source citations—all without sending data to external servers.
+By combining **FastAPI**, **Next.js 15**, and **LanceDB**, LOCO provides a "chat-with-your-docs" experience that is 100% air-gapped ready.
 
-### Key Features
-
-- 🔒 **100% Local**: All processing happens on your machine. No cloud dependencies.
-- 📄 **Multi-Format Support**: Ingest PDFs and text files with automatic processing.
-- 🧠 **Semantic Chunking**: Intelligent document splitting based on topic boundaries (not arbitrary character limits).
-- 🔍 **Hybrid Search**: Combines vector similarity with keyword matching for optimal retrieval.
-- 📚 **Source Citations**: Every answer includes clickable references to source documents.
-- ⚡ **One-Click Launch**: Single command starts the entire stack.
+### ✨ Key Features
+*   🔒 **Zero Data Leaks**: Your documents and queries never leave your local machine.
+*   🧠 **Semantic Chunking**: Intelligent document splitting that understands topic shifts (not just character counts).
+*   🔍 **Hybrid Retrieval**: Combines vector similarity with keyword matching via LanceDB.
+*   📚 **Verified Citations**: Every response includes clickable references to the exact source text.
+*   ⚡ **Single-Command Startup**: A custom `run.py` script manages the backend, frontend, and environment for you.
 
 ---
 
-## 🏗️ Architecture
-
-```
-┌──────────────────────────────────────────────────────────────┐
-│                        LOCO RAG Engine                       │
-├──────────────────────────────────────────────────────────────┤
-│                                                              │
-│  ┌─────────────────┐        ┌─────────────────────────────┐  │
-│  │   Next.js 15    │◄──────►│       FastAPI Backend       │  │
-│  │   Frontend      │  REST  │                             │  │
-│  │                 │        │  ┌───────────────────────┐  │  │
-│  │  • Chat UI      │        │  │    LOCO Engine        │  │  │
-│  │  • Admin Panel  │        │  │  • Semantic Chunking  │  │  │
-│  │  • File Upload  │        │  │  • Vector Search      │  │  │
-│  └─────────────────┘        │  │  • LLM Integration    │  │  │
-│                             │  └───────────┬───────────┘  │  │
-│                             │              │              │  │
-│                             │  ┌───────────▼───────────┐  │  │
-│                             │  │      LanceDB          │  │  │
-│                             │  │  (Embedded Vectors)   │  │  │
-│                             │  └───────────────────────┘  │  │
-│                             └─────────────────────────────┘  │
-│                                          │                   │
-│                             ┌────────────▼────────────┐      │
-│                             │        Ollama           │      │
-│                             │  • llama3.2 (LLM)       │      │
-│                             │  • nomic-embed-text     │      │
-│                             └─────────────────────────┘      │
-└──────────────────────────────────────────────────────────────┘
-```
+## 🏗️ Tech Stack
+| Layer | Technology | Role |
+| :--- | :--- | :--- |
+| **LLM** | Ollama (`llama3.2`) | Local reasoning engine |
+| **Embeddings** | Ollama (`nomic-embed-text`) | Text-to-vector transformation |
+| **Vector Store**| LanceDB | High-performance, embedded vector database |
+| **Backend** | FastAPI | High-concurrency REST API |
+| **Frontend** | Next.js 15 (App Router) | Modern, responsive Chat UI with Shadcn/UI |
 
 ---
 
 ## 🚀 Quick Start
 
-### Prerequisites
+### 1. Prerequisites
+Ensure you have the following installed:
+*   **Python 3.10+**
+*   **Node.js 18+**
+*   **Ollama** — [Download here](https://ollama.com)
 
-1. **Python 3.10+**
-2. **Node.js 18+**
-3. **Ollama** - [Install from ollama.com](https://ollama.com)
-
-### Setup
-
+### 2. Setup Models
+Pull the required models via terminal:
 ```bash
-# Clone the repository
-git clone https://github.com/yourusername/loco-rag-engine.git
-cd loco-rag-engine
-
-# Pull required Ollama models
 ollama pull llama3.2
 ollama pull nomic-embed-text
+```
 
-# Run the application
+### 3. One-Click Launch
+Clone the repo and run the orchestrator:
+```bash
+git clone https://github.com/yourusername/loco-rag-engine.git
+cd loco-rag-engine
 python run.py
 ```
+*The script will automatically create a virtual environment, install dependencies, and launch both the API (Port 8000) and the UI (Port 3000).*
 
-The application will automatically:
-- Set up the Python virtual environment
-- Install dependencies
-- Start the backend server (port 8000)
-- Start the frontend (port 3000)
-- Open your browser to `http://localhost:3000`
-
----
-
-## 📖 Documentation
-
-| Document | Description |
-|----------|-------------|
-| [Architecture](docs/architecture.md) | System design and component overview |
-| [API Reference](docs/api-reference.md) | Complete API endpoint documentation |
-| [Frontend UI](docs/frontend-ui.md) | shadcn/ui components and styling guide |
-| [Development](docs/development.md) | Developer setup and contribution guide |
-| [Deployment](docs/deployment.md) | Production deployment instructions |
-| [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |
+### 4. Services & Ports
+Once running, the following services are available:
+*   **Frontend UI**: [http://localhost:3000](http://localhost:3000)
+*   **Backend API**: [http://localhost:8000](http://localhost:8000)
+*   **API Documentation (Swagger UI)**: [http://localhost:8000/docs](http://localhost:8000/docs)
 
 ---
 
-## 🛠️ Tech Stack
-
-| Component | Technology | Purpose |
-|-----------|------------|---------|
-| **LLM** | Ollama (llama3.2) | Local language model for Q&A |
-| **Embeddings** | Ollama (nomic-embed-text) | Text-to-vector conversion |
-| **Vector DB** | LanceDB | Embedded, serverless vector storage |
-| **Backend** | FastAPI | High-performance REST API |
-| **Frontend** | Next.js 15 | React-based web interface |
-| **Styling** | Tailwind CSS + Shadcn/UI | Modern, accessible UI components |
-
----
-
-## 📁 Project Structure
-
-```
+## 📂 Project Structure
+```text
 loco-rag-engine/
-├── backend/
-│   ├── core/
-│   │   ├── database.py      # LanceDB connection & config
-│   │   ├── engine.py        # RAG engine (embed, search, generate)
-│   │   ├── processor.py     # PDF extraction & semantic chunking
-│   │   └── security.py      # Authentication & JWT
-│   ├── data/                # Vector DB & SQLite storage
-│   ├── main.py              # FastAPI application
-│   └── requirements.txt
-├── frontend/
-│   └── src/
-│       ├── app/             # Next.js pages
-│       └── lib/             # API client & utilities
-├── docs/                    # Documentation
-├── run.py                   # One-click launcher
-└── README.md
+├── 📂 backend/           # FastAPI application & RAG logic
+│   ├── 📂 core/          # Engine, Semantic Processor & Security
+│   └── 📂 data/          # Local LanceDB vector storage
+├── 📂 frontend/          # Next.js 15 + Tailwind + Shadcn UI
+│   ├── 📂 src/app/       # Chat and Admin routes
+│   └── 📂 src/components/# UI components (Alerts, Buttons, etc.)
+├── 📂 docs/              # Detailed technical documentation
+├── 📄 run.py             # Main entry point / Process orchestrator
+└── 📄 README.md          # You are here
 ```
 
 ---
 
-## 🔌 API Endpoints
-
-| Endpoint | Method | Description |
-|----------|--------|-------------|
-| `/health` | GET | Health check |
-| `/ingest` | POST | Upload and process documents |
-| `/query` | POST | Ask questions and get answers |
-| `/admin/setup` | POST | Initial admin password setup |
-| `/admin/login` | POST | Authenticate and get JWT |
-| `/admin/config` | GET/POST | View/update settings |
-
-See [API Reference](docs/api-reference.md) for detailed documentation.
+## 📖 Deep Dive Documentation
+| Topic | Description |
+| :--- | :--- |
+| [**Architecture**](docs/architecture.md) | How the Semantic Chunking and LanceDB integration works. |
+| [**API Reference**](docs/api-reference.md) | Documentation for `/query`, `/ingest`, and `/admin` endpoints. |
+| [**Deployment**](docs/deployment.md) | Deployment Guide. |
+| [**Development**](docs/development.md) | How to contribute and extend the LOCO engine. |
+| [**Frontend UI**](docs/frontend-ui.md) | Frontend UI Documentation. |
+| [**Troubleshooting**](docs/troubleshooting.md) | Common issues with Ollama connectivity or PDF parsing. |
 
 ---
 
 ## 🤝 Contributing
+We welcome contributions! Please see our [Development Guide](docs/development.md) for local setup instructions.
 
-Contributions are welcome! Please read our contributing guidelines before submitting PRs.
-
-1. Fork the repository
-2. Create a feature branch (`git checkout -b feat/amazing-feature`)
-3. Commit changes following conventional commits (`git commit -m 'feat: add amazing feature'`)
-4. Push to your branch (`git push origin feat/amazing-feature`)
+1. Fork the Project
+2. Create your Feature Branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your Changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the Branch (`git push origin feature/AmazingFeature`)
 5. Open a Pull Request
-
-### Code Style
-
-- **Python**: Follow [Google Python Style Guide](https://google.github.io/styleguide/pyguide.html)
-- **TypeScript**: Use ESLint with recommended rules
-- All functions must have docstrings/JSDoc comments
 
 ---
 
 ## 📄 License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+Distributed under the MIT License. See `LICENSE` for more information.
 
 ---
-
-## ⭐ Acknowledgments
-
-- [Ollama](https://ollama.com) for making local LLMs accessible
-- [LanceDB](https://lancedb.com) for the embedded vector database
-- [FastAPI](https://fastapi.tiangolo.com) for the high-performance backend framework
-- [Next.js](https://nextjs.org) for the React framework
+<p align="center">Built with ❤️ for the Local-First AI Community</p>
