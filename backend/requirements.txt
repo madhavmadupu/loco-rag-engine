@@ -32,7 +32,7 @@ pypdf>=3.0.0
 python-multipart>=0.0.6
 
 # Security
-passlib[bcrypt]>=1.7.4
+bcrypt>=4.0.1
 python-jose[cryptography]>=3.3.0
 
 # Numerical Computing

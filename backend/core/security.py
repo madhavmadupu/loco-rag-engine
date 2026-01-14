@@ -37,7 +37,7 @@ from typing import Optional
 from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from jose import JWTError, jwt
-from passlib.context import CryptContext
+import bcrypt
 
 from backend.core.database import (
     admin_exists,
@@ -50,14 +50,6 @@ from backend.core.database import (
 SECRET_KEY = os.getenv("LOCO_SECRET_KEY", "loco-rag-engine-local-secret-key-change-me")
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
-
-# Password hashing context
-# Disable truncate_error to prevent warnings for short passwords
-_pwd_context = CryptContext(
-    schemes=["bcrypt"],
-    deprecated="auto",
-    bcrypt__rounds=12,
-)
 
 # Bearer token security scheme
 _bearer_scheme = HTTPBearer(auto_error=False)
@@ -75,7 +67,10 @@ def hash_password(password: str) -> str:
     Example:
         hashed = hash_password("mysecretpassword")
     """
-    return _pwd_context.hash(password)
+    pwd_bytes = password.encode('utf-8')
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(pwd_bytes, salt)
+    return hashed.decode('utf-8')
 
 
 def verify_password(plain_password: str, hashed_password: str) -> bool:
@@ -92,7 +87,9 @@ def verify_password(plain_password: str, hashed_password: str) -> bool:
         if verify_password(user_input, stored_hash):
             print("Password correct")
     """
-    return _pwd_context.verify(plain_password, hashed_password)
+    pwd_bytes = plain_password.encode('utf-8')
+    hash_bytes = hashed_password.encode('utf-8')
+    return bcrypt.checkpw(pwd_bytes, hash_bytes)
 
 
 def create_access_token(
@@ -173,7 +170,7 @@ def setup_admin(password: str) -> bool:
 
 
 def authenticate_admin(password: str) -> Optional[str]:
-    """Authenticate the admin and return an access token.
+    """Authenticate the admin and receive an access token.
     
     Args:
         password: The admin password to verify.
@@ -193,7 +190,9 @@ def authenticate_admin(password: str) -> Optional[str]:
     if not stored_hash:
         return None
     
-    if not verify_password(password, stored_hash):
+    is_valid = verify_password(password, stored_hash)
+    
+    if not is_valid:
         return None
     
     return create_access_token(data={"sub": "admin"})

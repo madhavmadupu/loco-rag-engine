@@ -62,10 +62,14 @@ class LocoEngine:
     def __init__(self) -> None:
         """Initialize the LOCO RAG engine.
         
-        Sets up the database connection and loads application configuration.
+        Sets up the database connection, loads application configuration,
+        and initializes the Ollama client with explicit localhost to avoid
+        0.0.0.0 binding issues.
         """
         self.db = get_lancedb_connection()
         self.config = load_config()
+        # Explicitly use 127.0.0.1 to avoid issues with OLLAMA_HOST=0.0.0.0
+        self.client = ollama.Client(host='http://127.0.0.1:11434')
     
     def get_embedding(self, text: str) -> list[float]:
         """Generate a vector embedding for the given text.
@@ -87,7 +91,7 @@ class LocoEngine:
             print(f"Embedding dimension: {len(embedding)}")
         """
         model = self.config.get("embedding_model", "nomic-embed-text")
-        response = ollama.embeddings(model=model, prompt=text)
+        response = self.client.embeddings(model=model, prompt=text)
         return response["embedding"]
     
     def ingest(
@@ -210,7 +214,7 @@ Answer:"""
         model = self.config.get("model", "llama3.2")
         temperature = self.config.get("temperature", 0.7)
         
-        response = ollama.generate(
+        response = self.client.generate(
             model=model,
             prompt=prompt,
             options={"temperature": temperature},
