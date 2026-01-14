@@ -54,6 +54,7 @@ graph TD
     OLM -- Answer --> Core
     Core -- JSON --> End
     End -- Response --> API_C
+```
 <img width="2485" height="1455" alt="image" src="https://github.com/user-attachments/assets/7570361d-c976-4a10-9137-fd6f34352594" />
 
 
