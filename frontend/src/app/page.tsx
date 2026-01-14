@@ -21,6 +21,7 @@ import { Badge } from '@/components/ui/badge';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 import { Separator } from '@/components/ui/separator';
+import { Toaster, toast } from 'sonner';
 import {
   Send,
   FileText,
@@ -90,7 +91,6 @@ export default function LocoChat() {
   const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [input, setInput] = useState('');
   const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [copiedId, setCopiedId] = useState<string | null>(null);
   const [sidebarOpen, setSidebarOpen] = useState(true);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -127,7 +127,7 @@ export default function LocoChat() {
     };
     setSessions(prev => [newSession, ...prev]);
     setActiveSessionId(newSession.id);
-    setError(null);
+    toast.info('New chat started');
   }, []);
 
   /**
@@ -138,6 +138,7 @@ export default function LocoChat() {
     if (activeSessionId === sessionId) {
       setActiveSessionId(sessions.length > 1 ? sessions.find(s => s.id !== sessionId)?.id || null : null);
     }
+    toast.success('Chat deleted');
   }, [activeSessionId, sessions]);
 
   /**
@@ -148,6 +149,9 @@ export default function LocoChat() {
     if (success) {
       setCopiedId(messageId);
       setTimeout(() => setCopiedId(null), 2000);
+      toast.success('Copied to clipboard');
+    } else {
+      toast.error('Failed to copy');
     }
   };
 
@@ -164,8 +168,10 @@ export default function LocoChat() {
 
     const userMessage = input.trim();
     setInput('');
-    setError(null);
     setIsLoading(true);
+
+    // Show processing toast
+    const toastId = toast.loading('Processing your question...');
 
     const newUserMessage: Message = {
       id: generateId(),
@@ -211,9 +217,11 @@ export default function LocoChat() {
         }
         return session;
       }));
+
+      toast.success('Response received', { id: toastId });
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'Failed to get response';
-      setError(errorMessage);
+      toast.error(errorMessage, { id: toastId });
     } finally {
       setIsLoading(false);
     }
@@ -231,6 +239,7 @@ export default function LocoChat() {
 
   return (
     <div className="flex h-screen bg-background">
+      <Toaster richColors position="top-right" />
       {/* Sidebar */}
       <aside className={`${sidebarOpen ? 'w-72' : 'w-0'} border-r bg-muted/30 flex flex-col transition-all duration-300 overflow-hidden`}>
         {/* Sidebar Header */}
@@ -252,8 +261,8 @@ export default function LocoChat() {
               <div
                 key={session.id}
                 className={`group flex items-center gap-2 p-3 rounded-lg cursor-pointer transition-colors ${session.id === activeSessionId
-                    ? 'bg-primary/10 text-primary'
-                    : 'hover:bg-muted'
+                  ? 'bg-primary/10 text-primary'
+                  : 'hover:bg-muted'
                   }`}
                 onClick={() => setActiveSessionId(session.id)}
               >
@@ -379,8 +388,8 @@ export default function LocoChat() {
                     </div>
 
                     <Card className={`inline-block max-w-full ${message.role === 'user'
-                        ? 'bg-primary text-primary-foreground'
-                        : 'bg-muted/50'
+                      ? 'bg-primary text-primary-foreground'
+                      : 'bg-muted/50'
                       }`}>
                       <CardContent className="p-4">
                         <div className="prose prose-sm dark:prose-invert max-w-none">
@@ -461,15 +470,7 @@ export default function LocoChat() {
               </div>
             )}
 
-            {/* Error Message */}
-            {error && (
-              <Card className="border-destructive bg-destructive/10">
-                <CardContent className="p-4 text-destructive flex items-center gap-2">
-                  <span>⚠️</span>
-                  <span>{error}</span>
-                </CardContent>
-              </Card>
-            )}
+
           </div>
         </ScrollArea>
 
