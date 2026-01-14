@@ -52,7 +52,12 @@ ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 60 * 24  # 24 hours
 
 # Password hashing context
-_pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+# Disable truncate_error to prevent warnings for short passwords
+_pwd_context = CryptContext(
+    schemes=["bcrypt"],
+    deprecated="auto",
+    bcrypt__rounds=12,
+)
 
 # Bearer token security scheme
 _bearer_scheme = HTTPBearer(auto_error=False)
