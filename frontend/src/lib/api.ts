@@ -251,4 +251,34 @@ export const locoApi = {
     const data = await res.json();
     return data.config;
   },
+
+  /**
+   * Get list of documents (requires auth).
+   * @returns List of documents with chunk counts.
+   */
+  async getDocuments(): Promise<{ filename: string; chunk_count: number }[]> {
+    const res = await fetchWithAuth('/admin/documents');
+
+    if (!res.ok) {
+        if (res.status === 401) throw new Error('Unauthorized');
+        throw new Error('Failed to fetch documents');
+    }
+
+    return res.json();
+  },
+
+  /**
+   * Delete a document (requires auth).
+   * @param filename - The filename to delete.
+   */
+  async deleteDocument(filename: string): Promise<void> {
+    const res = await fetchWithAuth(`/admin/documents/${filename}`, {
+      method: 'DELETE',
+    });
+
+    if (!res.ok) {
+        if (res.status === 401) throw new Error('Unauthorized');
+        throw new Error('Failed to delete document');
+    }
+  },
 };

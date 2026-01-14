@@ -21,6 +21,18 @@ import { Separator } from '@/components/ui/separator';
 import { Progress } from '@/components/ui/progress';
 import { Toaster, toast } from 'sonner';
 import { AnimatedThemeToggler } from '@/components/ui/animated-theme-toggler';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import {
+    AlertDialog,
+    AlertDialogAction,
+    AlertDialogCancel,
+    AlertDialogContent,
+    AlertDialogDescription,
+    AlertDialogFooter,
+    AlertDialogHeader,
+    AlertDialogTitle,
+    AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import {
     Settings,
     Upload,
@@ -34,7 +46,8 @@ import {
     Cpu,
     Thermometer,
     Layers,
-    Shield
+    Shield,
+    Trash2
 } from 'lucide-react';
 
 /**
@@ -51,6 +64,34 @@ export default function AdminPage() {
     const [health, setHealth] = useState<HealthResponse | null>(null);
     const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
+    const [documents, setDocuments] = useState<{ filename: string; chunk_count: number }[]>([]);
+
+    const fetchDocuments = useCallback(async () => {
+        if (!isAuthenticated) return;
+        try {
+            const docs = await locoApi.getDocuments();
+            setDocuments(docs);
+        } catch (err) {
+            console.error('Failed to fetch documents', err);
+        }
+    }, [isAuthenticated]);
+
+    useEffect(() => {
+        if (isAuthenticated) {
+            fetchDocuments();
+        }
+    }, [isAuthenticated, fetchDocuments]);
+
+    const handleDelete = async (filename: string) => {
+        try {
+            await locoApi.deleteDocument(filename);
+            toast.success('Document deleted');
+            fetchDocuments();
+            checkStatus(); // Refresh global stats
+        } catch {
+            toast.error('Failed to delete document');
+        }
+    };
 
     /**
      * Check backend health and auth status.
@@ -174,6 +215,7 @@ export default function AdminPage() {
             // Refresh health to get updated document count
             const healthData = await locoApi.health();
             setHealth(healthData);
+            fetchDocuments();
 
             setTimeout(() => setUploadProgress(null), 1000);
         } catch (err) {
@@ -217,7 +259,7 @@ export default function AdminPage() {
                 <Card className="w-full max-w-md">
                     <CardHeader className="text-center">
                         <div className="flex justify-center mb-4">
-                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                            <div className="w-16 h-16 rounded-full bg-linear-to-br from-blue-500 to-purple-600 flex items-center justify-center">
                                 <Shield className="w-8 h-8 text-white" />
                             </div>
                         </div>
@@ -473,6 +515,65 @@ export default function AdminPage() {
                                         </div>
                                         <Progress value={uploadProgress} />
                                     </div>
+                                )}
+                            </CardContent>
+                        </Card>
+
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="text-lg">Manage Documents</CardTitle>
+                                <CardDescription>View and manage your knowledge base files</CardDescription>
+                            </CardHeader>
+                            <CardContent>
+                                {documents.length === 0 ? (
+                                    <div className="text-center py-6 text-muted-foreground text-sm">
+                                        No documents uploaded yet.
+                                    </div>
+                                ) : (
+                                    <Table>
+                                        <TableHeader>
+                                            <TableRow>
+                                                <TableHead>Filename</TableHead>
+                                                <TableHead className="text-right">Chunks</TableHead>
+                                                <TableHead className="text-right">Actions</TableHead>
+                                            </TableRow>
+                                        </TableHeader>
+                                        <TableBody>
+                                            {documents.map((doc) => (
+                                                <TableRow key={doc.filename}>
+                                                    <TableCell className="font-medium flex items-center gap-2">
+                                                        <FileText className="w-4 h-4 text-primary" />
+                                                        {doc.filename}
+                                                    </TableCell>
+                                                    <TableCell className="text-right">{doc.chunk_count}</TableCell>
+                                                    <TableCell className="text-right">
+                                                        <AlertDialog>
+                                                            <AlertDialogTrigger asChild>
+                                                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10">
+                                                                    <Trash2 className="w-4 h-4" />
+                                                                </Button>
+                                                            </AlertDialogTrigger>
+                                                            <AlertDialogContent>
+                                                                <AlertDialogHeader>
+                                                                    <AlertDialogTitle>Delete Document?</AlertDialogTitle>
+                                                                    <AlertDialogDescription>
+                                                                        This will permanently delete "{doc.filename}" and its {doc.chunk_count} chunks from the vector database.
+                                                                        This action cannot be undone.
+                                                                    </AlertDialogDescription>
+                                                                </AlertDialogHeader>
+                                                                <AlertDialogFooter>
+                                                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                                                    <AlertDialogAction onClick={() => handleDelete(doc.filename)} className="bg-destructive hover:bg-destructive/90">
+                                                                        Delete
+                                                                    </AlertDialogAction>
+                                                                </AlertDialogFooter>
+                                                            </AlertDialogContent>
+                                                        </AlertDialog>
+                                                    </TableCell>
+                                                </TableRow>
+                                            ))}
+                                        </TableBody>
+                                    </Table>
                                 )}
                             </CardContent>
                         </Card>

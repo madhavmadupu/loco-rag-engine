@@ -251,3 +251,56 @@ Answer:"""
         
         table = self.db.open_table(self.TABLE_NAME)
         return table.count_rows()
+
+    def list_documents(self) -> list[dict[str, Any]]:
+        """List all documents in the knowledge base.
+        
+        Returns:
+            A list of dicts with 'filename' and 'chunk_count'.
+            
+        Example:
+            docs = engine.list_documents()
+            # [{'filename': 'report.pdf', 'chunk_count': 15}]
+        """
+        if self.TABLE_NAME not in self.db.table_names():
+            return []
+        
+        table = self.db.open_table(self.TABLE_NAME)
+        # LanceDB doesn't have a direct "group by" in the basic API, 
+        # but we can query all unique 'source' fields.
+        # For efficiency in a real prod system, we might maintain a separate 'documents' table.
+        # Here, we'll scan (which is fine for < 100k chunks).
+        
+        try:
+            # We fetch all sources. Optimization: In a large system, use a better index strategy.
+            # Using to_pandas() for aggregation is easiest with LanceDB's pyarrow integration.
+            df = table.to_pandas()
+            if df.empty:
+                return []
+            
+            summary = df['source'].value_counts().reset_index()
+            summary.columns = ['filename', 'chunk_count']
+            return summary.to_dict('records')
+            
+        except Exception:
+            return []
+
+    def delete_document(self, filename: str) -> bool:
+        """Delete a document and all its chunks from the knowledge base.
+        
+        Args:
+            filename: The filename of the document to delete.
+            
+        Returns:
+            True if deletion was successful (or file didn't exist), False on error.
+        """
+        if self.TABLE_NAME not in self.db.table_names():
+            return True
+            
+        try:
+            table = self.db.open_table(self.TABLE_NAME)
+            table.delete(f"source = '{filename}'")
+            return True
+        except Exception as e:
+            print(f"Error deleting document {filename}: {e}")
+            return False

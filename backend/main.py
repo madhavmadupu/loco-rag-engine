@@ -299,6 +299,47 @@ async def admin_login(request: AdminLoginRequest) -> LoginResponse:
     return LoginResponse(access_token=token)
 
 
+@app.get("/admin/documents", tags=["Admin"])
+async def list_documents(
+    _: str = Depends(get_current_admin)
+) -> list[dict[str, Any]]:
+    """List all documents (admin only).
+    
+    Requires admin authentication via Bearer token.
+    
+    Returns:
+        A list of dictionaries, each representing a document.
+    """
+    return engine.list_documents()
+
+
+@app.delete("/admin/documents/{filename}", tags=["Admin"])
+async def delete_document(
+    filename: str,
+    _: str = Depends(get_current_admin)
+) -> dict[str, Any]:
+    """Delete a document (admin only).
+    
+    Requires admin authentication via Bearer token.
+    
+    Args:
+        filename: The name of the document to delete.
+        
+    Returns:
+        Success message.
+        
+    Raises:
+        HTTPException: 500 if deletion fails.
+    """
+    success = engine.delete_document(filename)
+    if not success:
+        raise HTTPException(
+            status_code=500,
+            detail=f"Failed to delete document: {filename}"
+        )
+    return {"message": "Document deleted successfully"}
+
+
 @app.get("/admin/config", tags=["Admin"])
 async def get_config(
     _: str = Depends(get_current_admin),
