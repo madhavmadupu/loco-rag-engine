@@ -102,6 +102,7 @@ The application will automatically:
 |----------|-------------|
 | [Architecture](docs/architecture.md) | System design and component overview |
 | [API Reference](docs/api-reference.md) | Complete API endpoint documentation |
+| [Frontend UI](docs/frontend-ui.md) | shadcn/ui components and styling guide |
 | [Development](docs/development.md) | Developer setup and contribution guide |
 | [Deployment](docs/deployment.md) | Production deployment instructions |
 | [Troubleshooting](docs/troubleshooting.md) | Common issues and solutions |

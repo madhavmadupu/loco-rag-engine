@@ -2,16 +2,42 @@
  * @fileoverview Admin dashboard for LOCO RAG Engine.
  * 
  * Provides file upload, configuration settings, and authentication
- * for managing the RAG system.
+ * for managing the RAG system, built with shadcn/ui components.
  */
 
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useCallback } from 'react';
 import { locoApi, getAuthToken, clearAuthToken, Config, HealthResponse } from '@/lib/api';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Label } from '@/components/ui/label';
+import { Slider } from '@/components/ui/slider';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Separator } from '@/components/ui/separator';
+import { Progress } from '@/components/ui/progress';
+import { Toaster, toast } from 'sonner';
+import {
+    Settings,
+    Upload,
+    FileText,
+    LogOut,
+    ArrowLeft,
+    CheckCircle,
+    AlertCircle,
+    Loader2,
+    Database,
+    Cpu,
+    Thermometer,
+    Layers,
+    Shield
+} from 'lucide-react';
 
 /**
- * Admin dashboard page component.
+ * Admin dashboard page component using shadcn/ui.
  */
 export default function AdminPage() {
     const [isAuthenticated, setIsAuthenticated] = useState(false);
@@ -19,24 +45,16 @@ export default function AdminPage() {
     const [password, setPassword] = useState('');
     const [confirmPassword, setConfirmPassword] = useState('');
     const [error, setError] = useState<string | null>(null);
-    const [success, setSuccess] = useState<string | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [config, setConfig] = useState<Config | null>(null);
     const [health, setHealth] = useState<HealthResponse | null>(null);
-    const [uploadProgress, setUploadProgress] = useState<string | null>(null);
+    const [uploadProgress, setUploadProgress] = useState<number | null>(null);
     const fileInputRef = useRef<HTMLInputElement>(null);
-
-    /**
-     * Check authentication status on mount.
-     */
-    useEffect(() => {
-        checkStatus();
-    }, []);
 
     /**
      * Check backend health and auth status.
      */
-    const checkStatus = async () => {
+    const checkStatus = useCallback(async () => {
         try {
             const healthData = await locoApi.health();
             setHealth(healthData);
@@ -59,7 +77,14 @@ export default function AdminPage() {
         } finally {
             setIsLoading(false);
         }
-    };
+    }, []);
+
+    /**
+     * Check authentication status on mount.
+     */
+    useEffect(() => {
+        checkStatus();
+    }, [checkStatus]);
 
     /**
      * Handle admin account setup.
@@ -67,7 +92,6 @@ export default function AdminPage() {
     const handleSetup = async (e: React.FormEvent) => {
         e.preventDefault();
         setError(null);
-        setSuccess(null);
 
         if (password !== confirmPassword) {
             setError('Passwords do not match');
@@ -82,7 +106,7 @@ export default function AdminPage() {
         try {
             await locoApi.setup(password);
             setNeedsSetup(false);
-            setSuccess('Admin account created! Please login.');
+            toast.success('Admin account created! Please login.');
             setPassword('');
             setConfirmPassword('');
         } catch (err) {
@@ -104,6 +128,7 @@ export default function AdminPage() {
                 const configData = await locoApi.getConfig();
                 setConfig(configData);
                 setPassword('');
+                toast.success('Welcome back!');
             } else {
                 setError('Invalid password');
             }
@@ -119,6 +144,7 @@ export default function AdminPage() {
         clearAuthToken();
         setIsAuthenticated(false);
         setConfig(null);
+        toast.info('Logged out successfully');
     };
 
     /**
@@ -129,17 +155,26 @@ export default function AdminPage() {
         if (!file) return;
 
         setError(null);
-        setSuccess(null);
-        setUploadProgress(`Uploading ${file.name}...`);
+        setUploadProgress(10);
 
         try {
+            // Simulate progress
+            const progressInterval = setInterval(() => {
+                setUploadProgress(prev => prev && prev < 90 ? prev + 10 : prev);
+            }, 200);
+
             const result = await locoApi.upload(file);
-            setSuccess(`${result.filename} uploaded! ${result.chunks_processed} chunks processed.`);
-            setUploadProgress(null);
+
+            clearInterval(progressInterval);
+            setUploadProgress(100);
+
+            toast.success(`${result.filename} uploaded! ${result.chunks_processed} chunks processed.`);
 
             // Refresh health to get updated document count
             const healthData = await locoApi.health();
             setHealth(healthData);
+
+            setTimeout(() => setUploadProgress(null), 1000);
         } catch (err) {
             setError(err instanceof Error ? err.message : 'Upload failed');
             setUploadProgress(null);
@@ -158,17 +193,17 @@ export default function AdminPage() {
         try {
             const newConfig = await locoApi.updateConfig(updates);
             setConfig(newConfig);
-            setSuccess('Configuration updated!');
+            toast.success('Configuration updated!');
         } catch {
-            setError('Failed to update configuration');
+            toast.error('Failed to update configuration');
         }
     };
 
     // Loading state
     if (isLoading) {
         return (
-            <div className="flex items-center justify-center h-screen bg-zinc-950 text-white">
-                <div className="animate-spin h-8 w-8 border-2 border-blue-500 border-t-transparent rounded-full" />
+            <div className="flex items-center justify-center h-screen">
+                <Loader2 className="w-8 h-8 animate-spin text-muted-foreground" />
             </div>
         );
     }
@@ -176,43 +211,54 @@ export default function AdminPage() {
     // Setup form
     if (needsSetup) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white p-6">
-                <div className="w-full max-w-md">
-                    <h1 className="text-2xl font-bold text-center mb-2">🚀 Welcome to LOCO</h1>
-                    <p className="text-zinc-400 text-center mb-8">
-                        Create your admin password to get started
-                    </p>
+            <div className="flex flex-col items-center justify-center min-h-screen p-6">
+                <Toaster richColors position="top-right" />
+                <Card className="w-full max-w-md">
+                    <CardHeader className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-gradient-to-br from-blue-500 to-purple-600 flex items-center justify-center">
+                                <Shield className="w-8 h-8 text-white" />
+                            </div>
+                        </div>
+                        <CardTitle className="text-2xl">Welcome to LOCO</CardTitle>
+                        <CardDescription>Create your admin password to get started</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleSetup} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Password</Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Minimum 8 characters"
+                                />
+                            </div>
+                            <div className="space-y-2">
+                                <Label htmlFor="confirm">Confirm Password</Label>
+                                <Input
+                                    id="confirm"
+                                    type="password"
+                                    value={confirmPassword}
+                                    onChange={(e) => setConfirmPassword(e.target.value)}
+                                    placeholder="Confirm your password"
+                                />
+                            </div>
 
-                    <form onSubmit={handleSetup} className="space-y-4">
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password (8+ characters)"
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
-                        />
-                        <input
-                            type="password"
-                            value={confirmPassword}
-                            onChange={(e) => setConfirmPassword(e.target.value)}
-                            placeholder="Confirm password"
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
-                        />
-                        <button
-                            type="submit"
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-3 rounded-lg font-semibold"
-                        >
-                            Create Admin Account
-                        </button>
-                    </form>
+                            {error && (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            )}
 
-                    {error && (
-                        <p className="mt-4 text-red-400 text-center">{error}</p>
-                    )}
-                    {success && (
-                        <p className="mt-4 text-green-400 text-center">{success}</p>
-                    )}
-                </div>
+                            <Button type="submit" className="w-full">
+                                Create Admin Account
+                            </Button>
+                        </form>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
@@ -220,179 +266,277 @@ export default function AdminPage() {
     // Login form
     if (!isAuthenticated) {
         return (
-            <div className="flex flex-col items-center justify-center h-screen bg-zinc-950 text-white p-6">
-                <div className="w-full max-w-md">
-                    <h1 className="text-2xl font-bold text-center mb-2">🔐 Admin Login</h1>
-                    <p className="text-zinc-400 text-center mb-8">
-                        Enter your password to access the admin panel
-                    </p>
+            <div className="flex flex-col items-center justify-center min-h-screen p-6">
+                <Toaster richColors position="top-right" />
+                <Card className="w-full max-w-md">
+                    <CardHeader className="text-center">
+                        <div className="flex justify-center mb-4">
+                            <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center">
+                                <Shield className="w-8 h-8 text-muted-foreground" />
+                            </div>
+                        </div>
+                        <CardTitle className="text-2xl">Admin Login</CardTitle>
+                        <CardDescription>Enter your password to access the admin panel</CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                        <form onSubmit={handleLogin} className="space-y-4">
+                            <div className="space-y-2">
+                                <Label htmlFor="password">Password</Label>
+                                <Input
+                                    id="password"
+                                    type="password"
+                                    value={password}
+                                    onChange={(e) => setPassword(e.target.value)}
+                                    placeholder="Enter your password"
+                                />
+                            </div>
 
-                    <form onSubmit={handleLogin} className="space-y-4">
-                        <input
-                            type="password"
-                            value={password}
-                            onChange={(e) => setPassword(e.target.value)}
-                            placeholder="Password"
-                            className="w-full bg-zinc-900 border border-zinc-700 rounded-lg px-4 py-3 outline-none focus:border-blue-500"
-                        />
-                        <button
-                            type="submit"
-                            className="w-full bg-gradient-to-r from-blue-600 to-purple-600 py-3 rounded-lg font-semibold"
-                        >
-                            Login
-                        </button>
-                    </form>
+                            {error && (
+                                <Alert variant="destructive">
+                                    <AlertCircle className="h-4 w-4" />
+                                    <AlertDescription>{error}</AlertDescription>
+                                </Alert>
+                            )}
 
-                    {error && (
-                        <p className="mt-4 text-red-400 text-center">{error}</p>
-                    )}
+                            <Button type="submit" className="w-full">
+                                Login
+                            </Button>
 
-                    <a
-                        href="/"
-                        className="block mt-6 text-center text-zinc-400 hover:text-white transition-colors"
-                    >
-                        ← Back to Chat
-                    </a>
-                </div>
+                            <div className="text-center">
+                                <Button variant="link" asChild>
+                                    <a href="/" className="text-muted-foreground">
+                                        <ArrowLeft className="w-4 h-4 mr-2" />
+                                        Back to Chat
+                                    </a>
+                                </Button>
+                            </div>
+                        </form>
+                    </CardContent>
+                </Card>
             </div>
         );
     }
 
     // Admin dashboard
     return (
-        <div className="min-h-screen bg-zinc-950 text-white">
+        <div className="min-h-screen bg-background">
+            <Toaster richColors position="top-right" />
+
             {/* Header */}
-            <header className="flex items-center justify-between px-6 py-4 border-b border-zinc-800">
+            <header className="flex items-center justify-between px-6 py-4 border-b">
                 <div className="flex items-center gap-3">
-                    <span className="text-2xl">⚙️</span>
-                    <h1 className="text-xl font-bold">Admin Dashboard</h1>
+                    <div className="w-10 h-10 rounded-lg bg-muted flex items-center justify-center">
+                        <Settings className="w-5 h-5" />
+                    </div>
+                    <div>
+                        <h1 className="text-xl font-bold">Admin Dashboard</h1>
+                        <p className="text-xs text-muted-foreground">Manage your RAG system</p>
+                    </div>
                 </div>
-                <div className="flex items-center gap-4">
-                    <a
-                        href="/"
-                        className="text-sm text-zinc-400 hover:text-white transition-colors"
-                    >
-                        ← Back to Chat
-                    </a>
-                    <button
-                        onClick={handleLogout}
-                        className="text-sm text-red-400 hover:text-red-300 transition-colors"
-                    >
+                <div className="flex items-center gap-2">
+                    <Button variant="outline" size="sm" asChild>
+                        <a href="/" className="flex items-center gap-2">
+                            <ArrowLeft className="w-4 h-4" />
+                            Chat
+                        </a>
+                    </Button>
+                    <Button variant="ghost" size="sm" onClick={handleLogout}>
+                        <LogOut className="w-4 h-4 mr-2" />
                         Logout
-                    </button>
+                    </Button>
                 </div>
             </header>
 
-            <main className="max-w-4xl mx-auto p-6 space-y-8">
+            <main className="max-w-6xl mx-auto p-6 space-y-6">
                 {/* Status Cards */}
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-400 text-sm">Documents</p>
-                        <p className="text-3xl font-bold text-blue-400">
-                            {health?.documents ?? 0}
-                        </p>
-                    </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-400 text-sm">Model</p>
-                        <p className="text-xl font-semibold">{config?.model ?? 'N/A'}</p>
-                    </div>
-                    <div className="bg-zinc-900 border border-zinc-800 rounded-lg p-4">
-                        <p className="text-zinc-400 text-sm">Status</p>
-                        <p className="text-xl font-semibold text-green-400">
-                            {health?.status === 'healthy' ? '✓ Healthy' : '✗ Error'}
-                        </p>
-                    </div>
+                <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-blue-500/10 flex items-center justify-center">
+                                    <Database className="w-6 h-6 text-blue-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Documents</p>
+                                    <p className="text-2xl font-bold">{health?.documents ?? 0}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center">
+                                    <Cpu className="w-6 h-6 text-purple-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Model</p>
+                                    <p className="text-lg font-semibold">{config?.model ?? 'N/A'}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-orange-500/10 flex items-center justify-center">
+                                    <Thermometer className="w-6 h-6 text-orange-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Temperature</p>
+                                    <p className="text-2xl font-bold">{config?.temperature ?? 0.7}</p>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
+
+                    <Card>
+                        <CardContent className="pt-6">
+                            <div className="flex items-center gap-4">
+                                <div className="w-12 h-12 rounded-lg bg-green-500/10 flex items-center justify-center">
+                                    <CheckCircle className="w-6 h-6 text-green-500" />
+                                </div>
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Status</p>
+                                    <Badge variant="default" className="bg-green-500">
+                                        {health?.status === 'healthy' ? 'Healthy' : 'Error'}
+                                    </Badge>
+                                </div>
+                            </div>
+                        </CardContent>
+                    </Card>
                 </div>
 
-                {/* Alerts */}
+                {/* Error Alert */}
                 {error && (
-                    <div className="bg-red-900/30 border border-red-500/30 rounded-lg p-4">
-                        <p className="text-red-300">⚠️ {error}</p>
-                    </div>
-                )}
-                {success && (
-                    <div className="bg-green-900/30 border border-green-500/30 rounded-lg p-4">
-                        <p className="text-green-300">✓ {success}</p>
-                    </div>
+                    <Alert variant="destructive">
+                        <AlertCircle className="h-4 w-4" />
+                        <AlertTitle>Error</AlertTitle>
+                        <AlertDescription>{error}</AlertDescription>
+                    </Alert>
                 )}
 
-                {/* File Upload */}
-                <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold mb-4">📄 Upload Documents</h2>
-                    <p className="text-zinc-400 text-sm mb-4">
-                        Upload PDF or text files to add to your knowledge base.
-                    </p>
+                {/* Main Content Tabs */}
+                <Tabs defaultValue="upload" className="space-y-6">
+                    <TabsList className="grid w-full grid-cols-2 max-w-md">
+                        <TabsTrigger value="upload" className="flex items-center gap-2">
+                            <Upload className="w-4 h-4" />
+                            Documents
+                        </TabsTrigger>
+                        <TabsTrigger value="settings" className="flex items-center gap-2">
+                            <Settings className="w-4 h-4" />
+                            Settings
+                        </TabsTrigger>
+                    </TabsList>
 
-                    <div className="border-2 border-dashed border-zinc-700 rounded-lg p-8 text-center hover:border-blue-500 transition-colors">
-                        <input
-                            ref={fileInputRef}
-                            type="file"
-                            accept=".pdf,.txt"
-                            onChange={handleUpload}
-                            className="hidden"
-                            id="file-upload"
-                        />
-                        <label
-                            htmlFor="file-upload"
-                            className="cursor-pointer"
-                        >
-                            <span className="text-4xl mb-4 block">📁</span>
-                            <p className="text-zinc-300 mb-2">
-                                {uploadProgress || 'Click to upload or drag and drop'}
-                            </p>
-                            <p className="text-zinc-500 text-sm">PDF, TXT up to 10MB</p>
-                        </label>
-                    </div>
-                </section>
+                    <TabsContent value="upload">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <FileText className="w-5 h-5" />
+                                    Upload Documents
+                                </CardTitle>
+                                <CardDescription>
+                                    Upload PDF or text files to add to your knowledge base
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div
+                                    className="border-2 border-dashed rounded-lg p-8 text-center hover:border-primary/50 hover:bg-muted/50 transition-colors cursor-pointer"
+                                    onClick={() => fileInputRef.current?.click()}
+                                >
+                                    <input
+                                        ref={fileInputRef}
+                                        type="file"
+                                        accept=".pdf,.txt"
+                                        onChange={handleUpload}
+                                        className="hidden"
+                                    />
+                                    <Upload className="w-12 h-12 mx-auto mb-4 text-muted-foreground" />
+                                    <p className="text-lg font-medium mb-1">
+                                        Click to upload or drag and drop
+                                    </p>
+                                    <p className="text-sm text-muted-foreground">
+                                        PDF, TXT up to 10MB
+                                    </p>
+                                </div>
 
-                {/* Settings */}
-                <section className="bg-zinc-900 border border-zinc-800 rounded-lg p-6">
-                    <h2 className="text-lg font-semibold mb-4">⚙️ Settings</h2>
+                                {uploadProgress !== null && (
+                                    <div className="space-y-2">
+                                        <div className="flex justify-between text-sm">
+                                            <span>Uploading...</span>
+                                            <span>{uploadProgress}%</span>
+                                        </div>
+                                        <Progress value={uploadProgress} />
+                                    </div>
+                                )}
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
 
-                    <div className="space-y-4">
-                        <div>
-                            <label className="block text-sm text-zinc-400 mb-2">
-                                Temperature ({config?.temperature ?? 0.7})
-                            </label>
-                            <input
-                                type="range"
-                                min="0"
-                                max="2"
-                                step="0.1"
-                                value={config?.temperature ?? 0.7}
-                                onChange={(e) =>
-                                    handleConfigUpdate({ temperature: parseFloat(e.target.value) })
-                                }
-                                className="w-full accent-blue-500"
-                            />
-                            <div className="flex justify-between text-xs text-zinc-500">
-                                <span>Precise</span>
-                                <span>Creative</span>
-                            </div>
-                        </div>
+                    <TabsContent value="settings">
+                        <Card>
+                            <CardHeader>
+                                <CardTitle className="flex items-center gap-2">
+                                    <Layers className="w-5 h-5" />
+                                    Engine Settings
+                                </CardTitle>
+                                <CardDescription>
+                                    Configure the RAG engine behavior
+                                </CardDescription>
+                            </CardHeader>
+                            <CardContent className="space-y-6">
+                                <div className="space-y-4">
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <Label>Temperature</Label>
+                                            <span className="text-sm text-muted-foreground">
+                                                {config?.temperature ?? 0.7}
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            value={[config?.temperature ?? 0.7]}
+                                            onValueChange={([value]) => handleConfigUpdate({ temperature: value })}
+                                            min={0}
+                                            max={2}
+                                            step={0.1}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                            <span>Precise</span>
+                                            <span>Creative</span>
+                                        </div>
+                                    </div>
 
-                        <div>
-                            <label className="block text-sm text-zinc-400 mb-2">
-                                Top K Sources ({config?.top_k ?? 3})
-                            </label>
-                            <input
-                                type="range"
-                                min="1"
-                                max="10"
-                                step="1"
-                                value={config?.top_k ?? 3}
-                                onChange={(e) =>
-                                    handleConfigUpdate({ top_k: parseInt(e.target.value) })
-                                }
-                                className="w-full accent-blue-500"
-                            />
-                            <div className="flex justify-between text-xs text-zinc-500">
-                                <span>1</span>
-                                <span>10</span>
-                            </div>
-                        </div>
-                    </div>
-                </section>
+                                    <Separator />
+
+                                    <div>
+                                        <div className="flex justify-between mb-2">
+                                            <Label>Top K Sources</Label>
+                                            <span className="text-sm text-muted-foreground">
+                                                {config?.top_k ?? 3}
+                                            </span>
+                                        </div>
+                                        <Slider
+                                            value={[config?.top_k ?? 3]}
+                                            onValueChange={([value]) => handleConfigUpdate({ top_k: value })}
+                                            min={1}
+                                            max={10}
+                                            step={1}
+                                            className="w-full"
+                                        />
+                                        <div className="flex justify-between text-xs text-muted-foreground mt-1">
+                                            <span>Fewer (faster)</span>
+                                            <span>More (thorough)</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </CardContent>
+                        </Card>
+                    </TabsContent>
+                </Tabs>
             </main>
         </div>
     );

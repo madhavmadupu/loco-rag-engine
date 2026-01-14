@@ -49,6 +49,7 @@ frontend/.next/
 frontend/out/
 frontend/.env.local
 frontend/.env*.local
+frontend/package-lock.json
 
 # Logs
 *.log
