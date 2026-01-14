@@ -21,6 +21,42 @@ By combining **FastAPI**, **Next.js 15**, and **LanceDB**, LOCO provides a "chat
 *   📚 **Verified Citations**: Every response includes clickable references to the exact source text.
 *   ⚡ **Single-Command Startup**: A custom `run.py` script manages the backend, frontend, and environment for you.
 
+## 🏗️ System Architecture
+LOCO RAG Engine operates on a decoupled client-server model designed for 100% local execution.
+
+```mermaid
+graph TD
+    subgraph Client ["Client Layer (Next.js 15)"]
+        UI[Chat Interface / Admin Panel]
+        API_C[API Client / Fetch]
+    end
+
+    subgraph Server ["Application Layer (FastAPI)"]
+        End[API Endpoints]
+        Core[LOCO Core Engine]
+        Proc[Semantic Processor]
+    end
+
+    subgraph Data ["Local Infrastructure"]
+        LDB[(LanceDB Vector Store)]
+        OLM[Ollama Local LLM]
+    end
+
+    %% Flow
+    UI --> API_C
+    API_C -- REST API --> End
+    End --> Core
+    Core --> Proc
+    Proc -- Embedding --> OLM
+    Proc -- Storage --> LDB
+    Core -- Context Search --> LDB
+    Core -- Generation --> OLM
+    OLM -- Answer --> Core
+    Core -- JSON --> End
+    End -- Response --> API_C
+<img width="2485" height="1455" alt="image" src="https://github.com/user-attachments/assets/7570361d-c976-4a10-9137-fd6f34352594" />
+
+
 ---
 
 ## 🏗️ Tech Stack
